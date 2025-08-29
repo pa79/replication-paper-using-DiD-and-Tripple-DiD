@@ -53,7 +53,6 @@ Results show that gonorrhea incidence fell among Black adolescents in early-repe
 
 ## Figures
 
-> Replace `path/to/figureX.ext` with the actual file paths in your repo. If you keep figures in `output/figures/`, use that path.
 
 ### Figure 2. Gonorrhea incidence among 15–19-year-old Blacks in Roe and early-repeal states by gender, 1985–2000
 ![Figure 2](Figure 1.png)  
