@@ -1,0 +1,736 @@
+---
+title: "Replication paper"
+author: "Prabin Adhikari"
+date: "2024-09-30"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+rm( list=ls() )
+knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning=FALSE)
+```
+
+
+```{r, echo = FALSE, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(haven)
+#install.packages("estimatr")
+library(estimatr)
+library(kableExtra)
+```
+
+# Introduction
+
+The research paper by Cunningham and Cornwell (2013) examines the long-run effect of abortion legalization on sexually transmitted infections (STIs), specifically focusing on gonorrhea rates. This study contributes to a growing body of literature that explores the unintended and long-term social outcomes of abortion policy changes. While much of the previous research focused on the effects of abortion legalization on a range of fertility outcomes, this paper - inspired from the Donohue and Levitt (2001) paper on the impact of legalized abortion on crime rates - explores the public health outcomes, specifically STI's like gonorrhea , offering new insights into the broader effects of abortion legalization. 
+
+The authors utilizes the variation in timing among states that legalized abortion before the nationwide Roe v. Wade decision in 1973 to identify the causal effect of abortion legalization on STI rates. These states — defined as "early-repeal states"—serve as a quasi-experimental setting to investigate whether changes in abortion legalization policy had subsequent effects on STI rates among cohorts born immediately after the policy change. The analysis primarily uses a difference-in-differences (DD) approach to identify the effect, comparing gonorrhea incidence in early-repeal states to the other states where abortion was not legalized until Roe v. Wade-referred to as Roe states. For the robustness purpose, the paper further applies a triple-difference (DDD) model by including a comparison with an untreated older cohort that was not exposed in utero to the legalization.
+
+The primary focus of the study is on 15-19-year-olds, analyzing gonorrhea rates 15-19 years after legalization, which aligns with the period when those born after abortion legalization would be reaching adolescence and becoming sexually active. The authors hypothesize that legal access to abortion would reduce the number of unwanted births, potentially altering family dynamics, parental investment, and ultimately affecting behaviors related to sexual health. Given that the characteristics of the marginal child born in the absence of legalized abortion could include a higher likelihood of single-parent upbringing and poverty—factors linked to increased risk of STIs—the study aims to test whether abortion legalization led to lower STI rates in subsequent cohorts.
+
+By analyzing the incidence of gonnorhea rates, the authors provide evidence that abortion legalization had significant long-term public health benefits, particularly for Black adolescents. The findings suggest that gonorrhea incidence fell substantially among Black females aged 15-19 years in the early-repeal states during the observed period, and this effect was most pronounced in the middle years of adolescence. The basic finding also hold up under triple-differencing approach. Results from the study highlights the broader social consequences of abortion policy, emphasizing how access to reproductive rights may influence public health outcomes beyond fertility and crime rates.
+
+
+
+```{r, echo = FALSE, message=FALSE, warning=FALSE}
+read_data <- function(df)
+{
+  full_path <- paste("https://github.com/scunning1975/mixtape/raw/master/", 
+                     df, sep = "")
+  df <- read_dta(full_path)
+  return(df)
+}
+
+abortion <- read_data("abortion.dta") %>% 
+  mutate(
+    repeal  = as_factor(repeal),
+    year    = as_factor(year),
+    fip     = as_factor(fip),
+    fa      = as_factor(fa),
+    younger = as_factor(younger),
+    yr      = as_factor(case_when(repeal == 1 & younger == 1 ~ 1, TRUE ~ 0)),
+    wm      = as_factor(case_when(wht == 1 & male == 1 ~ 1, TRUE ~ 0)),
+    wf      = as_factor(case_when(wht == 1 & male == 0 ~ 1, TRUE ~ 0)),
+    bm      = as_factor(case_when(wht == 0 & male == 1 ~ 1, TRUE ~ 0)),
+    bf      = as_factor(case_when(wht == 0 & male == 0 ~ 1, TRUE ~ 0))
+  )
+```
+
+# Descriptive statistics of the socio-demographic Characteristics
+
+
+```{r, echo= FALSE, message= FALSE, warning=FALSE}
+library(modelsummary)
+sumstat <- read_data("abortion.dta") %>% 
+ mutate(panelvar = case_when(
+      wm15 == 1 ~ "White Male",
+      bm15 == 1 ~ "Black Male",
+      wf15 == 1 ~ "White Female",
+      bf15 == 1 ~ "Black Female",
+      TRUE ~ NA_character_  # Catch-all in case none of the conditions match
+    )
+  )
+desc_stat = sumstat[!is.na(sumstat$lnr) & !is.na(sumstat$panelvar),]
+
+##table
+datasummary(
+  (`Gender-Race category` = panelvar) * (
+    (`AIDS mortality` = acc) +
+    (`Alcohol consumption per capita` = alcohol) +
+    (`Crack index` = crack) +
+    (`Male incarceration rate 10,000` = ir) +
+    (`Poverty rate` = poverty) +
+    (`Real income per capita` = income) +
+    (`State unemployment rate` = ur)
+  ) ~ (N + Mean + SD + Min + Max),
+  data = desc_stat
+)  
+```
+
+The descriptive statistics of the sample are summarized in Table 1, grouped by gender and race (Black Female, Black Male, White Female, and White Male). The mean AIDS mortality rate per capita is notably higher for Black females (33.01) and Black males (32.26), compared to White females (27.34) and White males (28.31), suggesting a disparity in health outcomes linked to HIV/AIDS between racial groups. Alcohol consumption per capita is consistent across all demographic groups, with a mean value of approximately 2.38, indicating no substantial differences in alcohol use by race or gender. The crack index, proxy for crack use which is the product of a factor analysis involving cocaine-related arrests, cocaine related and crack-related drug seizures, and cocaine-related deaths, is higher among Black individuals (mean values of 1.71 for females and 1.67 for males) compared to White individuals (mean values of 1.60 for females and 1.61 for males), reflecting greater exposure to crack-related environments in Black communities. The incarceration rate - estimated number of prisoners under the jurisdiction of state or federal prisons and inmates in the custody of local jails (institutionalized) per 10,000 in of the age–race population in a given state, also shows marked differences between racial groups. Black females and males experience much higher incarceration rates (mean values of 434.02 and 436.33 per 10,000, respectively) compared to their White counterparts (96.07 for females and 96.14 for males), indicating significant differences in the incarceration rate by race. The poverty rate is relatively similar across all groups, with an average of approximately 13%, though the observed range (2.9% to 27.2%) highlights variation in economic status within the sample. Real income per capita is comparable for Black and white individuals with slightly higher income per capita in Black individuals (around 20,848 USD to 20,924 USD) than for White individuals (approximately 20,533 USD), while the minimum and maximum values reveal considerable income heterogenity within sub-groups. Finally, the state unemployment rate averages around 5.5% across all race-gender groups, indicating comparable economic conditions overall, despite some regional variation (ranging from 2.26% to 13.44%). These socio-demographic variables are critical for understanding the broader context of the study, as they capture disparities in health, economic, legal, and social conditions that may influence the effect of abortion legalization on STI rates.
+
+
+```{r, echo = FALSE, message=FALSE, warning=FALSE, fig.width=9, fig.height=6}
+# Figure 1 part 1
+#install.packages("gridExtra")
+
+# Load the package
+#library(gridExtra)
+
+#Filtering the data 
+bf15 <- read_data("abortion.dta") %>% 
+  filter(bf15 == 1) %>%
+  mutate(state = ifelse(repeal == 1, "Repeal State", "Roe State"))%>%
+  group_by(year, state)%>%
+  summarise(gonn_rate = sum(totcase, na.rm = TRUE) / sum(totpop, na.rm = TRUE) * 100000)  # Calculate incidence rate
+
+# Create the plot
+plot1 <- ggplot(bf15, aes(x = year, y = gonn_rate, group = state, color = state)) +
+  # Solid red line for Repeal states
+  geom_line(data = subset(bf15, state == "Roe State"), size = 1) +  
+  # Dotted red line for Roe states
+  geom_line(data = subset(bf15, state == "Repeal State"), size = 1, linetype = "dashed") +  
+  geom_vline(xintercept = 1986, linetype = "dashed", color = "grey") +  
+  geom_vline(xintercept = 1992, linetype = "dashed", color = "grey") +  
+  annotate("rect", xmin = 1986, xmax = 1992, ymin = -Inf, ymax = Inf, 
+           alpha = 0.2, fill = "blue") +  # Shade the period from 1986 to 1992
+  scale_linetype_manual(values = c("Roe State" = "solid", "Repeal State" = "dashed")) +
+  scale_color_manual(values = c("Roe State" = "blue", "Repeal State" = "red")) +
+  scale_x_continuous(breaks = seq(1985, 2000, by = 1)) +  # Year by year from 1985 to 2000
+  labs(title = "Black 15–19 year-old female gonorrhea incidence (Roe vs. Repeal states)",
+       x = "Year", y = "Black female gonorrhea incidence per 100 000",
+       color = "State") +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.border = element_rect(colour = "black", fill = NA, size = 1), # Add a border
+        plot.title = element_text(size = 16, face = "bold"),  # Title font size
+        axis.title.x = element_text(size = 14),               # X-axis title font size
+        axis.title.y = element_text(size = 14),               # Y-axis title font size
+        axis.text.x = element_text(size = 12,angle = 90, vjust = 0.5, hjust = 1),    # X-axis text size
+        axis.text.y = element_text(size = 12),           # Y-axis text size)  # Apply a clean theme
+        legend.position = "bottom"
+        )  # Apply a clean theme
+
+# Print the plot
+plot1
+
+
+#Figure 1 part 2
+#Filtering the data 
+bm15 <- read_data("abortion.dta") %>% 
+  filter(bm15 == 1) %>%
+  mutate(state = ifelse(repeal == 1, "Repeal State", "Roe State"))%>%
+  group_by(year, state)%>%
+  summarise(gonn_rate = sum(totcase, na.rm = TRUE) / sum(totpop, na.rm = TRUE) * 100000)  # Calculate incidence rate
+
+
+# Create the plot
+plot2 <- ggplot(bm15, aes(x = year, y = gonn_rate, group = state, color = state)) +
+  # Solid red line for Repeal states
+  geom_line(data = subset(bm15, state == "Roe State"), size = 1) +  
+  # Dotted red line for Roe states
+  geom_line(data = subset(bm15, state == "Repeal State"), size = 1, linetype = "dashed") +  
+  geom_vline(xintercept = 1986, linetype = "dashed", color = "grey") +  
+  geom_vline(xintercept = 1992, linetype = "dashed", color = "grey") +  
+  annotate("rect", xmin = 1986, xmax = 1992, ymin = -Inf, ymax = Inf, 
+           alpha = 0.2, fill = "blue") +  # Shade the period from 1986 to 1992
+  scale_linetype_manual(values = c("Roe State" = "solid", "Repeal State" = "dotted")) +
+  scale_color_manual(values = c("Roe State" = "blue", "Repeal State" = "red")) +
+  scale_x_continuous(breaks = seq(1985, 2000, by = 1)) +  # Year by year from 1985 to 2000
+  labs(title = "Black 15–19 year-old Male gonorrhea incidence (Roe vs. Repeal states)",
+       x = "Year", y = "Black Male gonorrhea incidence per 100 000",
+       color = "State") +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.border = element_rect(colour = "black", fill = NA, size = 1), # Add a border
+        plot.title = element_text(size = 16, face = "bold"),  # Title font size
+        axis.title.x = element_text(size = 14),               # X-axis title font size
+        axis.title.y = element_text(size = 14),               # Y-axis title font size
+        axis.text.x = element_text(size = 12,angle = 90, vjust = 0.5, hjust = 1),    # X-axis text size
+        axis.text.y = element_text(size = 12),
+        legend.position = "bottom") 
+
+# Print the plot
+plot2
+# Use grid.arrange to arrange them side by side
+#grid.arrange(plot1, plot2, nrow = 2)
+```
+Figure 2 (as on paper). Gonorrhea incidence among 15–19-year-old Blacks in Roe and early repeal
+states by gender, 1985–2000
+
+The gonorrhea incidence for 15–19-year-old Blacks by gender over the 1985–2000 period is plotted in Figure 2 above. The shaded region in the figure indicates the years 1986–1992 when the in utero treatment group entered the sample frame. Figure shows that Black gonorrhea incidence in the Roe and early-repeal states follows the patterns predicted by the abortion legalization hypothesis. Gonorrhea incidence fell in the repeal states relative to the Roe states from 1986 to 1992, with the difference in incidence peaking in the middle of this period. 
+
+For Black males and females, the figure shows that the gonorrhea incidence in Repeal states was consistently lower than in Roe states, and this difference increased over time, peaking in the middle of this period. In the shaded period (1986-1992), there is a clear divergence, with Roe states experiencing higher gonorrhea rates compared to Repeal states. After 1992, the incidence in both groups declines, but the rate in Roe states remains higher throughout the observed period. The divergence during the treatment period (1986-1992) suggests that early access to abortion may have contributed to reducing the gonorrhea incidence in Repeal states, potentially due to reduced cohort size and altered demographic characteristics of those born. Overall, the figure aligns with the hypothesis that abortion legalization may have altered family structure and socio-economic conditions, ultimately reducing risky sexual behaviors and STI incidence among these cohorts.
+
+
+
+```{r, echo = FALSE, message=FALSE, warning=FALSE, fig.width=9, fig.height=6}
+# Figure 2 part 1
+#install.packages("gridExtra")
+
+# Load the package
+#library(gridExtra)
+
+#Filtering the data 
+wf15 <- read_data("abortion.dta") %>% 
+  filter(wf15 == 1) %>%
+  mutate(state = ifelse(repeal == 1, "Repeal State", "Roe State"))%>%
+  group_by(year, state)%>%
+  summarise(gonn_rate = sum(totcase, na.rm = TRUE) / sum(totpop, na.rm = TRUE) * 100000)  # Calculate incidence rate
+
+# Create the plot
+plot3 <- ggplot(wf15, aes(x = year, y = gonn_rate, color = state, group = state)) +
+   geom_line(data = subset(wf15, state == "Roe State"), size = 1) +  
+  # Dotted red line for Roe states
+  geom_line(data = subset(wf15, state == "Repeal State"), size = 1, linetype = "dashed") + 
+  geom_vline(xintercept = 1986, linetype = "dashed", color = "grey") +  
+  geom_vline(xintercept = 1992, linetype = "dashed", color = "grey") +  
+  annotate("rect", xmin = 1986, xmax = 1992, ymin = -Inf, ymax = Inf, 
+           alpha = 0.2, fill = "blue") +  # Shade the period from 1986 to 1992
+  scale_color_manual(values = c("Roe State" = "blue", "Repeal State" = "red")) +
+  scale_x_continuous(breaks = seq(1985, 2000, by = 1)) +  # Year by year from 1985 to 2000
+   # Add labels and title with improved styling
+  labs(title = "White 15-19 year-old female gonorrhea incidence (Roe vs Repeal states)",
+       x = "Year", y = "White female gonorrhea incidence per 100 000",
+       color = "State", linetype = "State") + 
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.border = element_rect(colour = "black", fill = NA, size = 1), # Add a border
+        plot.title = element_text(size = 16, face = "bold"),  # Title font size
+        axis.title.x = element_text(size = 14),               # X-axis title font size
+        axis.title.y = element_text(size = 14),               # Y-axis title font size
+        axis.text.x = element_text(size = 12, angle = 90, vjust = 0.5, hjust = 1),  # X-axis text size
+        axis.text.y = element_text(size = 12),            # Y-axis text size)  # Apply a clean theme
+        legend.position = "bottom")  # Apply a clean theme
+
+# Print the plot
+plot3
+
+#Figure 2 part 2
+#Filtering the data 
+wm15 <- read_data("abortion.dta") %>% 
+  filter(wm15 == 1) %>%
+  mutate(state = ifelse(repeal == 1, "Repeal State", "Roe State"))%>%
+  group_by(year, state)%>%
+  summarise(gonn_rate = sum(totcase, na.rm = TRUE) / sum(totpop, na.rm = TRUE) * 100000)  # Calculate incidence rate
+
+# Create the plot
+plot4 <- ggplot(wm15, aes(x = year, y = gonn_rate, color = state, group = state)) +
+   geom_line(data = subset(wm15, state == "Roe State"), size = 1) +  
+  # Dotted red line for Roe states
+  geom_line(data = subset(wm15, state == "Repeal State"), size = 1, linetype = "dashed") + 
+  geom_vline(xintercept = 1986, linetype = "dashed", color = "grey") +  
+  geom_vline(xintercept = 1992, linetype = "dashed", color = "grey") +  
+  annotate("rect", xmin = 1986, xmax = 1992, ymin = -Inf, ymax = Inf, 
+           alpha = 0.2, fill = "blue") +  # Shade the period from 1986 to 1992 
+  scale_color_manual(values = c("Roe State" = "blue", "Repeal State" = "red")) +
+  scale_x_continuous(breaks = seq(1985, 2000, by = 1)) +  # Year by year from 1985 to 2000
+   # Add labels and title with improved styling
+  labs(title = "White 15-19 year-old male gonorrhea incidence (Roe vs Repeal states)",
+       x = "Year", y = "White male gonorrhea incidence per 100 000",
+       color = "State", linetype = "State") +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.border = element_rect(colour = "black", fill = NA, size = 1), # Add a border
+        plot.title = element_text(size = 16, face = "bold"),  # Title font size
+        axis.title.x = element_text(size = 14),               # X-axis title font size
+        axis.title.y = element_text(size = 14),               # Y-axis title font size
+        axis.text.x = element_text(size = 12,angle = 90, vjust = 0.5, hjust = 1),   # X-axis text size
+        axis.text.y = element_text(size = 12),      # Y-axis text size)  # Apply a clean theme
+        legend.position = "bottom"
+        )  # Apply a clean theme
+
+# Print the plot
+plot4
+# Use grid.arrange to arrange them side by side
+#grid.arrange(plot3, plot4, nrow = 2)
+```
+
+
+Figure 3 (as on paper). Gonorrhea incidence among 15–19-year-old Whites in Roe and early repeal
+states by gender, 1985–2000
+
+Figure 3 shows that gonorrhea incidence follows the similar patterns for both white male and white female in the Roe and early-repeal states. The magnitudes of gonorrhea incidence is much lower for whites as compared to blacks, which is shown in Figure 2 above. For Whites, the decline in gonorrhea incidence appears more gradual, and the difference between Roe and Repeal states is less marked after the treatment period, indicating that the impact of abortion legalization on reducing STI rates was less immediate or sustained in this group. Compared to the Black adolescents, the divergence is more pronounced for Black females and males, particularly during the shaded treatment period (1986-1992). This suggests that the effect of early abortion legalization had a more significant impact in reducing STI rates among Black adolescents compared to their White counterparts.
+
+```{r, echo = FALSE, message=FALSE, warning=FALSE, fig.width=9, fig.height=6}
+# Figure 4 part 1
+#install.packages("gridExtra")
+
+# Load the package
+#library(gridExtra)
+
+#Filtering the data 
+bf15_25 <- read_data("abortion.dta") %>% 
+  filter(age == 15 | age == 25) %>%
+  filter(race == 2)%>%
+  filter(sex == 2)%>%
+  mutate(state = ifelse(repeal == 1, "Repeal State", "Roe State"))%>%
+  mutate(age_category = case_when(
+    state == "Repeal State" & age == 15 ~ "Repeal 15-19",
+    state == "Repeal State" & age == 25 ~ "Repeal 20-25",
+    state == "Roe State" & age == 15 ~ "Roe 15-19",
+    state == "Roe State" & age == 25 ~ "Roe 20-25",
+    TRUE ~ NA_character_  # Handles cases outside the specified age ranges
+  )) %>%
+  group_by(year, age_category)%>%
+  summarise(gonn_rate = sum(totcase, na.rm = TRUE) / sum(totpop, na.rm = TRUE) * 100000)  # Calculate incidence rate
+
+# Create the plot
+plot5 <- ggplot(bf15_25, aes(x = year, y = gonn_rate, color = age_category, group = age_category)) +
+  # Solid red line for Repeal states
+  geom_line(data = subset(bf15_25, age_category == "Roe 15-19"), size = 1) +  
+  geom_line(data = subset(bf15_25, age_category == "Roe 20-25"), size = 1, linetype = "dashed") +
+  # Dotted red line for Roe states
+  geom_line(data = subset(bf15_25, age_category == "Repeal 15-19"), size = 1)+
+  geom_line(data = subset(bf15_25, age_category == "Repeal 20-25"), size = 1, linetype = "dashed")+
+  geom_vline(xintercept = 1986, linetype = "dashed", color = "grey") +
+  geom_vline(xintercept = 1992, linetype = "dashed", color = "grey") +
+  annotate("rect", xmin = 1986, xmax = 1992, ymin = -Inf, ymax = Inf, 
+           alpha = 0.2, fill = "blue") +  # Shade the period from 1986 to 1992
+  scale_color_manual(values = c("Roe 15-19" = "black", "Roe 20-25" = "black", "Repeal 15-19" = "red", "Repeal 20-25" = "red")) +
+  scale_x_continuous(breaks = seq(1985, 2000, by = 1)) +  # Year by year from 1985 to 2000
+  labs(title = "Black female gonorrhea incidence (15-19 vs 25-29 years-olds)",
+       x = "Year", y = "Black Female Gonorrhea incidence per 100,000",
+       color = "age_category") +
+  theme_minimal()+
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.border = element_rect(colour = "black", fill = NA, size = 1), # Add a border
+        plot.title = element_text(size = 16, face = "bold"),  # Title font size
+        axis.title.x = element_text(size = 14),               # X-axis title font size
+        axis.title.y = element_text(size = 14),               # Y-axis title font size
+        axis.text.x = element_text(size = 12,angle = 90, vjust = 0.5, hjust = 1),     # X-axis text size
+        axis.text.y = element_text(size = 12),              # Y-axis text size)  # Apply a clean theme
+        legend.position = "bottom"
+        )  # Apply a clean theme
+print(plot5) 
+
+#Figure 4 part 2
+#Filtering the data 
+bm15_25 <- read_data("abortion.dta") %>% 
+  filter(age == 15 | age == 25) %>%
+  filter(race == 2) %>%
+  filter(sex == 1) %>%
+  mutate(state = ifelse(repeal == 1, "Repeal State", "Roe State"))%>%
+  mutate(age_category = case_when(
+    state == "Repeal State" & age == 15 ~ "Repeal 15-19",
+    state == "Repeal State" & age == 25 ~ "Repeal 20-25",
+    state == "Roe State" & age == 15 ~ "Roe 15-19",
+    state == "Roe State" & age == 25 ~ "Roe 20-25",
+    TRUE ~ NA_character_  # Handles cases outside the specified age ranges
+  )) %>%
+  group_by(year, age_category)%>%
+  summarise(gonn_rate = sum(totcase, na.rm = TRUE) / sum(totpop, na.rm = TRUE) * 100000)  # Calculate incidence rate
+
+# Create the plot
+plot6 <- ggplot(bm15_25, aes(x = year, y = gonn_rate, color = age_category)) +
+  # Solid red line for Repeal states
+  geom_line(data = subset(bm15_25, age_category == "Roe 15-19"), size = 1) +  
+  geom_line(data = subset(bm15_25, age_category == "Roe 20-25"), size = 1, linetype = "dashed") +
+  # Dotted red line for Roe states
+  geom_line(data = subset(bm15_25, age_category == "Repeal 15-19"), size = 1)+
+  geom_line(data = subset(bm15_25, age_category == "Repeal 20-25"), size = 1, linetype = "dashed")+
+  geom_vline(xintercept = 1986, linetype = "dashed", color = "grey") +
+  geom_vline(xintercept = 1992, linetype = "dashed", color = "grey") +
+  annotate("rect", xmin = 1986, xmax = 1992, ymin = -Inf, ymax = Inf, 
+           alpha = 0.2, fill = "blue") +  # Shade the period from 1986 to 1992
+  scale_color_manual(values = c("Roe 15-19" = "black", "Roe 20-25" = "black", "Repeal 15-19" = "red", "Repeal 20-25" = "red")) +
+  scale_x_continuous(breaks = seq(1985, 2000, by = 1)) +  # Year by year from 1985 to 2000
+  labs(title = "Black Male gonorrhea incidence (15-19 vs 25-29 years-olds)",
+       x = "Year", y = "Black Male Gonorrhea Incidence per 100,000",
+       color = "age_category") +
+  theme_minimal()+
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.border = element_rect(colour = "black", fill = NA, size = 1), # Add a border
+        plot.title = element_text(size = 16, face = "bold"),  # Title font size
+        axis.title.x = element_text(size = 14),               # X-axis title font size
+        axis.title.y = element_text(size = 14),               # Y-axis title font size
+        axis.text.x = element_text(size = 12, angle = 90, vjust = 0.5, hjust = 1),   # X-axis text size
+        axis.text.y = element_text(size = 12),# Y-axis text size)  # Apply a clean theme
+        legend.position = "bottom"
+        )  # Apply a clean theme
+plot6
+# Use grid.arrange to arrange them side by side
+#grid.arrange(plot3, plot4, nrow = 2)
+```
+
+Figure 4. Gonorrhea incidence among 15–19- and 25–29-year-old Blacks in Roe
+and early-repeal states by gender, 1985–2000.
+
+Figure 4 and Figure 5 extend the analysis from the figures 2 and 3 on gonorrhea incidence among 15-19-year-olds by adding data for an older cohort (25-29-year-olds). This allows for a triple-difference (DDD) analysis to explore whether the effects of abortion legalization differ across age groups, particularly focusing on Black and White adolescents compared to their older counterparts who were not exposed to legalized abortion.
+
+In Figure 4, the trends for the older cohort (20-25 years old) do not diverge as much as the younger cohort (15-19 years old) between Roe and Repeal states, suggesting that the impact of abortion legalization had a larger effect on those Black communities who were directly exposed in utero. The greater difference observed in the younger group, combined with the reduced incidence among 25-29-year-olds in Repeal states, provides evidence that the public health benefits of legalized abortion were more pronounced on Black communities in reducing STI rates.
+
+
+
+```{r, echo = FALSE, message=FALSE, warning=FALSE, fig.width=9, fig.height=6}
+# Figure 4 part 1
+#install.packages("gridExtra")
+
+# Load the package
+#library(gridExtra)
+
+#Filtering the data 
+wf15_25 <- read_data("abortion.dta") %>% 
+  filter(age == 15 | age == 25) %>%
+  filter(race == 1)%>%
+  filter(sex == 2)%>%
+  mutate(state = ifelse(repeal == 1, "Repeal State", "Roe State"))%>%
+  mutate(age_category = case_when(
+    state == "Repeal State" & age == 15 ~ "Repeal 15-19",
+    state == "Repeal State" & age == 25 ~ "Repeal 20-25",
+    state == "Roe State" & age == 15 ~ "Roe 15-19",
+    state == "Roe State" & age == 25 ~ "Roe 20-25",
+    TRUE ~ NA_character_  # Handles cases outside the specified age ranges
+  )) %>%
+  group_by(year, age_category)%>%
+  summarise(gonn_rate = sum(totcase, na.rm = TRUE) / sum(totpop, na.rm = TRUE) * 100000)  # Calculate incidence rate
+
+# Create the plot
+plot7 <- ggplot(wf15_25, aes(x = year, y = gonn_rate, color = age_category, group = age_category)) +
+  # Solid red line for Repeal states
+  geom_line(data = subset(wf15_25, age_category == "Roe 15-19"), size = 1) +  
+  geom_line(data = subset(wf15_25, age_category == "Roe 20-25"), size = 1, linetype = "dashed") +
+  # Dotted red line for Roe states
+  geom_line(data = subset(wf15_25, age_category == "Repeal 15-19"), size = 1)+
+  geom_line(data = subset(wf15_25, age_category == "Repeal 20-25"), size = 1, linetype = "dashed")+
+  geom_vline(xintercept = 1986, linetype = "dashed", color = "grey") +
+  geom_vline(xintercept = 1992, linetype = "dashed", color = "grey") +
+  annotate("rect", xmin = 1986, xmax = 1992, ymin = -Inf, ymax = Inf, 
+           alpha = 0.2, fill = "blue") +  # Shade the period from 1986 to 1992
+  scale_color_manual(values = c("Roe 15-19" = "black", "Roe 20-25" = "black", "Repeal 15-19" = "red", "Repeal 20-25" = "red")) +
+  scale_x_continuous(breaks = seq(1985, 2000, by = 1)) +  # Year by year from 1985 to 2000
+  labs(title = "White female gonorrhea incidence (15-19 vs 25-29 years-olds)",
+       x = "Year", y = "White female Gonorrhea Incidence per 100,000",
+       color = "age_category") +
+  theme_minimal()+
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.border = element_rect(colour = "black", fill = NA, size = 1), # Add a border 
+        plot.title = element_text(size = 16, face = "bold"),  # Title font size
+        axis.title.x = element_text(size = 14),               # X-axis title font size
+        axis.title.y = element_text(size = 14),               # Y-axis title font size
+        axis.text.x = element_text(size = 12, angle = 90, vjust = 0.5, hjust = 1),  # X-axis text size
+        axis.text.y = element_text(size = 12),             # Y-axis text size)  # Apply a clean theme
+        legend.position = "bottom"
+        )  # Apply a clean theme
+print(plot7) 
+
+#Figure 4 part 2
+#Filtering the data 
+wm15_25 <- read_data("abortion.dta") %>% 
+  filter(age == 15 | age == 25) %>%
+  filter(race == 1) %>%
+  filter(sex == 1) %>%
+  mutate(state = ifelse(repeal == 1, "Repeal State", "Roe State"))%>%
+  mutate(age_category = case_when(
+    state == "Repeal State" & age == 15 ~ "Repeal 15-19",
+    state == "Repeal State" & age == 25 ~ "Repeal 20-25",
+    state == "Roe State" & age == 15 ~ "Roe 15-19",
+    state == "Roe State" & age == 25 ~ "Roe 20-25",
+    TRUE ~ NA_character_  # Handles cases outside the specified age ranges
+  )) %>%
+  group_by(year, age_category)%>%
+  summarise(gonn_rate = sum(totcase, na.rm = TRUE) / sum(totpop, na.rm = TRUE) * 100000)  # Calculate incidence rate
+
+# Create the plot
+plot8 <- ggplot(wm15_25, aes(x = year, y = gonn_rate, color = age_category)) +
+  # Solid red line for Repeal states
+  geom_line(data = subset(wm15_25, age_category == "Roe 15-19"), size = 1) +  
+  geom_line(data = subset(wm15_25, age_category == "Roe 20-25"), size = 1, linetype = "dashed") +
+  # Dotted red line for Roe states
+  geom_line(data = subset(wm15_25, age_category == "Repeal 15-19"), size = 1)+
+  geom_line(data = subset(wm15_25, age_category == "Repeal 20-25"), size = 1, linetype = "dashed")+
+  geom_vline(xintercept = 1986, linetype = "dashed", color = "grey") +
+  geom_vline(xintercept = 1992, linetype = "dashed", color = "grey") +
+  annotate("rect", xmin = 1986, xmax = 1992, ymin = -Inf, ymax = Inf, 
+           alpha = 0.2, fill = "blue") +  # Shade the period from 1986 to 1992
+  scale_color_manual(values = c("Roe 15-19" = "black", "Roe 20-25" = "black", "Repeal 15-19" = "red", "Repeal 20-25" = "red")) +
+  scale_x_continuous(breaks = seq(1985, 2000, by = 1)) +  # Year by year from 1985 to 2000
+  labs(title = "White Male gonorrhea incidence (15-19 vs 25-29 years-olds)",
+       x = "Year", y = "White male Gonorrhea incidence per 100,000",
+       color = "age_category") +
+  theme_minimal()+
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.border = element_rect(colour = "black", fill = NA, size = 1), # Add a border 
+        plot.title = element_text(size = 16, face = "bold"),  # Title font size
+        axis.title.x = element_text(size = 14), # X-axis title 
+        axis.title.y = element_text(size = 14),               # Y-axis title font size
+        axis.text.x = element_text(size = 12, angle = 90, vjust = 0.5, hjust = 1),  # X-axis text size
+        axis.text.y = element_text(size = 12),
+        legend.position = "bottom" # Y-axis text size)  # Apply a clean theme
+        )  # Apply a clean theme
+plot8
+# Use grid.arrange to arrange them side by side
+#grid.arrange(plot3, plot4, nrow = 2)
+```
+
+
+Figure 5 shows gonorrhea incidence trends for White females and males in both the 15-19 and 25-29-year-old cohorts. Compared to the Black adolescents, the trends in gonorrhea incidence among Whites are more consistent across age groups, with fewer differences between Roe and Repeal states.For the older category, it also shows a steady decline over time as the younger category, but the gonnorrhea incidence difference between Roe and Repeal states is less pronounced than observed among younger whites and Black adolescents. This suggests that the effect of abortion legalization on reducing gonorrhea rates was not strong enough for White individuals, regardless of the age group. 
+
+# Difference - in - difference model estimation and results
+
+The study aims to estimate the impact of early abortion legalization on the gonorrhea incidence rate for 15-19-year-olds by employing difference-in-differences (DD) and Triple difference (DDD) regression models. The DD regression is used to compare states that legalized abortion before Roe v. Wade (early-repeal states) with states that did not legalize abortion until Roe (Roe states). The DDD analysis compares the effects on 15-19-year-olds with an older, unaffected cohort of 25-29-year-olds, in order to isolate the cohort-specific effect from contemporaneous shocks.
+
+The following regression model was used to capture the effects:
+
+\[
+\ln GON_{st} = \beta_1 \text{Repeal}_s + \beta_2 D_t + \beta_{3t} (\text{Repeal}_s \cdot D_t) + X_{st} \gamma + \delta_{1s} DS_{s} + \theta_1 t + \theta_2 DS_{s} \cdot t + \epsilon_{st} 
+\] 
+
+
+- \( GON_{st} \): The number of new gonorrhea cases per 100,000 of the population in state \(s\) and year \(t\), for the cohort aged 15-19.
+- \( \ln GON_{st} \): Logarithm of gonorrhea incidence.
+- \( \text{Repeal}_s \): Equals 1 if state \(s\) legalized abortion prior to Roe v. Wade (i.e., early-repeal state), and 0 otherwise.
+- \( D_t \): Year indicator that captures temporal variations.
+- \( \text{Repeal}_s \cdot D_t \): Interaction term between early-repeal state and year, representing the difference-in-differences effect of early repeal on gonorrhea incidence over time.
+- \( X_{st} \): Vector of covariates including variables such as AIDS mortality, incarceration rates, parental involvement laws, alcohol consumption, crack index, poverty, income, and state unemployment rates.
+- \( D_{Ss} \): State indicator to control for state-specific effects.
+- \( t \): Time trend variable to capture linear temporal changes.
+- \( \epsilon_{st} \): Error term capturing unobserved factors.
+
+- \( \beta_{3t} \): The main coefficients of interest are the interaction terms (\( \beta_{3t} \)) for each year, which estimate the effect of early repeal on gonorrhea incidence in early-repeal states for the 15-19-year-old cohort. The study hypothesizes that these coefficients should be negative and statistically significant for the years 1986-1992, indicating a decrease in gonorrhea rates due to the early availability of abortion, with the effect rising in magnitude through the middle of this period and then falling.
+
+
+
+
+```{r, echo = FALSE, message=FALSE, warning=FALSE, width = 80}
+library(modelsummary)
+#Balck female
+reg_bf <- abortion %>% 
+  filter(bf15 == 1) %>% 
+  lm_robust(lnr ~ repeal*year + fip + acc + ir + pi + alcohol+ crack +   poverty+ income+ ur,
+            data = ., weights = totpop, clusters = fip)
+
+#Black_male
+reg_bm <- abortion %>% 
+  filter(bm15 == 1) %>% 
+  lm_robust(lnr ~ repeal*year + fip +  acc + ir + pi + alcohol+ crack + poverty+ income+ ur,
+            data = ., weights = totpop, clusters = fip)
+
+#White_female
+reg_wf <- abortion %>% 
+  filter(wf15 == 1) %>% 
+  lm_robust(lnr ~ repeal*year + fip +  acc + ir + pi + alcohol+ crack + poverty+ income+ ur,
+            data = ., weights = totpop, clusters = fip)
+
+#White_male
+reg_wm <- abortion %>% 
+  filter(wm15 == 1) %>% 
+  lm_robust(lnr ~ repeal*year + fip + acc + ir + pi + alcohol+ crack + poverty+ income+ ur,
+            data = ., weights = totpop, clusters = fip)
+
+# Column B
+#Black female 
+reg_bf_t <- abortion %>% 
+  filter(bf15 == 1) %>% 
+  lm_robust(lnr ~ repeal*year + fip*t + acc + ir + pi + alcohol+ crack +   poverty+ income+ ur,
+            data = ., weights = totpop, clusters = fip)
+
+#Black_male
+reg_bm_t <- abortion %>% 
+  filter(bm15 == 1) %>% 
+  lm_robust(lnr ~ repeal*year + fip*t +  acc + ir + pi + alcohol+ crack + poverty+ income+ ur,
+            data = ., weights = totpop, clusters = fip)
+
+#White_female
+reg_wf_t <- abortion %>% 
+  filter(wf15 == 1) %>% 
+  lm_robust(lnr ~ repeal*year + fip*t +  acc + ir + pi + alcohol+ crack + poverty+ income+ ur,
+            data = ., weights = totpop, clusters = fip)
+
+#White_male
+reg_wm_t <- abortion %>% 
+  filter(wm15 == 1) %>% 
+  lm_robust(lnr ~ repeal*year + fip*t + acc + ir + pi + alcohol+ crack + poverty+ income+ ur,
+            data = ., weights = totpop, clusters = fip)
+
+dependent = list(
+  "Black Female" = list(
+    "(a)" = reg_bf,
+    "(b)" = reg_bf_t),
+  "Black Male" = list(
+    "(a)" = reg_bm,
+    "(b)" = reg_bm_t),
+  "White Female" = list(
+    "(a)" = reg_wf,
+    "(b)" = reg_wf_t),
+  "White Male" = list(
+    "(a)" = reg_wm,
+    "(b)" = reg_wm_t)
+)
+
+#models_t <- list(reg_bf_t, reg_bm_t, reg_wf_t, reg_wm_t)
+modelsummary(dependent, shape = "cbind", stars = c('*' = .1, '**' = .01, '***' = .001), coef_map = c(
+    "repeal1:year1986" = "Repeal * 1986",                                                                   "repeal1:year1987" = "Repeal * 1987",
+    "repeal1:year1988" = "Repeal * 1988",
+    "repeal1:year1989" = "Repeal * 1989",
+    "repeal1:year1990" = "Repeal * 1990",
+    "repeal1:year1991" = "Repeal * 1991",
+    "repeal1:year1992" = "Repeal * 1992",
+    "repeal1:year1993" = "Repeal * 1993",
+    "repeal1:year1994" = "Repeal * 1994",
+    "repeal1:year1995" = "Repeal * 1995",
+    "repeal1:year1996" = "Repeal * 1996",
+    "repeal1:year1997" = "Repeal * 1997",
+    "repeal1:year1998" = "Repeal * 1998",
+    "repeal1:year1999" = "Repeal * 1999",
+    "repeal1:year2000" = "Repeal * 2000", "acc" = "AIDS mortality per capita", "ir" = "Incarceration per capita", "pi" = "Parental involvement law", "alcohol" = "Alcohol consumption per capita", "crack" = "Crack index", "poverty" = "Poverty per capita", "income" = "Real income per capita", "ur" = "State unemployment rate"), title = "Table 2. Diff-in-Diff Baseline: Panel Fixed Effects Regressions of Early Repeal of Abortion on In Utero Cohort Log of 15–19 Year-Old Gonorrhea Incidence Rates by Race/Gender, 1985–2000, State Clustering")
+
+#, coef_omit = c(-67:-89)
+
+
+```
+
+Table 2 presents the estimated coefficients for the repeal-year interactions (\(\hat{\beta}_{3t}\)) from Equation (1), assessing the impact of early abortion legalization on gonorrhea incidence rates by race and gender. For Black females, without state trends (column a), the repeal-year coefficients are negative and statistically significant at the 1% level from 1986-1992, increasing in magnitude from -0.259 in 1986 to -0.785 in 1989 before declining to -0.442 in 1992, indicating a reduction in gonorrhea incidence of 23-55%. Including state trends (column b) reduces the magnitude but retains significance at the 10% level, showing a reduction of 15-43%. For Black males, similar results are observed, with negative and significant coefficients (at 10% level) indicating a reduction of 17-38%, with peak effects in 1989 translating to roughly 1,355 fewer for males per 100,000 compared to 1985 levels (1,824 fewer cases for females). For Whites, the evidence is weaker, with repeal-year coefficients for females being insignificant and for males following a similar, but non-significant, pattern as their Black counterparts. F-tests indicate joint significance for Black and White females over the treatment period, supporting the abortion-legalization hypothesis, while effects for males are weaker when state trends are included. The covariates add little to the explanatory power with some exceptions like AIDS mortality, crack, and alcohol consumption. These three covariates increase gonorrhea incidence when state trends are omitted.
+
+# Triple - Difference (DDD) Model estimation and results
+
+\[
+\ln GON_{ast} = \beta_1 \text{Repeal}_s + \beta_2 D_t + \beta_{3t} (\text{Repeal}_s \cdot D_t) + \lambda_1 D_A + \lambda_2 (\text{Repeal}_s \cdot D_A) + \lambda_{3t} (D_A \cdot D_t) + \lambda_{4t} (\text{Repeal}_s \cdot D_A \cdot D_t) + X_{st} \gamma + \delta_{1s} D_{Ss} + \delta_{2s} (D_{Ss} \cdot D_A) + \theta_1 t + \theta_{2s} (D_{S} \cdot t) + \theta_3 (D_A \cdot t) + \theta_{4s} (DS_{s} \cdot D_A \cdot t) + \epsilon_{ast}
+\]
+
+
+- \( GON_{ast} \): Gonorrhea incidence, similar to Equation (1), but indexed by age \(a\) to include two different age cohorts (15-19 and 25-29).
+- \( D_A \): Age cohort indicator, equal to 1 for the 15-19-year-olds and 0 for the 25-29-year-olds.
+- \( \text{Repeal}_s \cdot D_A \cdot D_t \): Triple interaction term of early repeal, age cohort, and year. This captures the DDD effect, which is the difference in the differences in gonorrhea rates between early-repeal and Roe states, comparing 15-19-year-olds with 25-29-year-olds.
+
+
+- \( \lambda_{4t} \): These coefficients are of interest in the DDD regression and help determine if there is a consistent pattern similar to the DD coefficients (\( \beta_{3t} \)) predicted by the abortion legalization hypothesis. The goal is to assess if the 15-19-year-old cohort (the treated group) experienced a statistically significant decline in gonorrhea incidence compared to the older cohort, which serves as an additional control to account for contemporaneous shocks.
+
+
+```{r, echo = FALSE, message=FALSE, warning=FALSE}
+#DDD
+library(dplyr)
+library(estimatr)
+
+regddd_bf <- abortion %>% 
+  filter(race == 2 & sex == 2 & (age == 15 | age == 25)) %>% 
+  lm_robust(
+    formula = lnr ~ repeal * year + younger * repeal + younger * year + yr * year + fip * t + acc + ir + pi + alcohol + crack + poverty + income + ur, 
+    data = . ,  # Use the current data from the pipeline
+    weights = totpop, 
+    clusters = fip
+  )
+
+regddd_bm <- abortion %>% 
+  filter(race == 2 & sex == 1 & (age == 15 | age == 25)) %>% 
+  lm_robust(
+    formula = lnr ~ repeal * year + younger * repeal + younger * year + yr * year + fip * t + acc + ir + pi + alcohol + crack + poverty + income + ur, 
+    data = . ,  # Use the current data from the pipeline
+    weights = totpop, 
+    clusters = fip
+  )
+
+regddd_wf <- abortion %>% 
+  filter(race == 1 & sex == 2 & (age == 15 | age == 25)) %>% 
+  lm_robust(
+    formula = lnr ~ repeal * year + younger * repeal + younger * year + yr * year + fip * t + acc + ir + pi + alcohol + crack + poverty + income + ur, 
+    data = . ,  # Use the current data from the pipeline
+    weights = totpop, 
+    clusters = fip
+  )
+
+regddd_wm <- abortion %>% 
+  filter(race == 1 & sex == 1 & (age == 15 | age == 25)) %>% 
+  lm_robust(
+    formula = lnr ~ repeal * year + younger * repeal + younger * year + yr * year + fip * t + acc + ir + pi + alcohol + crack + poverty + income + ur, 
+    data = . ,  # Use the current data from the pipeline
+    weights = totpop, 
+    clusters = fip
+  )
+
+# Table 3 Column B
+regddd_bf_t <- abortion %>% 
+  filter(race == 2 & sex == 2 & (age == 15 | age == 25)) %>% 
+  lm_robust(
+    formula = lnr ~ repeal * year + younger * repeal + younger * year + yr * year + fip * younger + fip * t + younger * t + fip* younger * t + acc + ir + pi + alcohol + crack + poverty + income + ur, 
+    data = .,  # Use the current data from the pipeline
+    weights = totpop, 
+    clusters = fip
+  )
+
+
+regddd_bm_t <- abortion %>% 
+  filter(race == 2 & sex == 1 & (age == 15 | age == 25)) %>% 
+  lm_robust(
+    formula = lnr ~ repeal * year + younger * repeal + younger * year + yr * year + fip * younger + fip * t + younger * t + fip* younger * t + acc + ir + pi + alcohol + crack + poverty + income + ur,
+    data = . ,  # Use the current data from the pipeline
+    weights = totpop, 
+    clusters = fip
+  )
+
+regddd_wf_t <- abortion %>% 
+  filter(race == 1 & sex == 2 & (age == 15 | age == 25)) %>% 
+  lm_robust(
+    formula = lnr ~ repeal * year + younger * repeal + younger * year + yr * year + fip * younger + fip * t + younger * t + fip* younger * t + acc + ir + pi + alcohol + crack + poverty + income + ur,
+    data = . ,  # Use the current data from the pipeline
+    weights = totpop, 
+    clusters = fip
+  )
+
+regddd_wm_t <- abortion %>% 
+  filter(race == 1 & sex == 1 & (age == 15 | age == 25)) %>% 
+  lm_robust(
+    formula = lnr ~ repeal * year + younger * repeal + younger * year + yr * year + fip * younger + fip * t + younger * t + fip* younger * t + acc + ir + pi + alcohol + crack + poverty + income + ur,
+    data = . ,  # Use the current data from the pipeline
+    weights = totpop, 
+    clusters = fip
+  )
+
+dependent_ddd = list(
+  "Black Female" = list(
+    "(a)" = regddd_bf,
+    "(b)" = regddd_bf_t),
+  "Black Male" = list(
+    "(a)" = regddd_bm,
+    "(b)" = regddd_bm_t),
+  "White Female" = list(
+    "(a)" = regddd_wf,
+    "(b)" = regddd_wf_t),
+  "White Male" = list(
+    "(a)" = regddd_wm,
+    "(b)" = regddd_wm_t)
+)
+
+
+modelsummary(dependent_ddd, shape = "cbind", stars = c('*' = .1, '**' = .01, '***' = .001), coef_map = c("year1986:yr1" = "Repeal * 15-year-old * 1986", "year1987:yr1" = "Repeal * 15-year-old * 1987", "year1988:yr1" = "Repeal * 15-year-old * 1988", "year1989:yr1" = "Repeal * 15-year-old * 1989", "year1990:yr1" = "Repeal * 15-year-old * 1990", "year1991:yr1" = "Repeal * 15-year-old * 1991", "year1992:yr1" = "Repeal * 15-year-old * 1992", "year1993:yr1" = "Repeal * 15-year-old * 1993", "year1994:yr1" = "Repeal * 15-year-old * 1994", "year1995:yr1" = "Repeal * 15-year-old * 1995", "year1996:yr1" = "Repeal * 15-year-old * 1996", "year1997:yr1" = "Repeal * 15-year-old * 1997", "year1998:yr1" = "Repeal * 15-year-old * 1998", "year1999:yr1" = "Repeal * 15-year-old * 1999", "year2000:yr1" = "Repeal * 15-year-old * 2000", "acc" = "AIDS mortality per capita", "ir" = "Incarceration per capita", "pi" = "Parental involvement law", "alcohol" = "Alcohol consumption per capita", "crack" = "Crack index", "poverty" = "Poverty per capita", "income" = "Real income per capita", "ur" = "State unemployment rate"), title = "Table 3. Diff-in-Diff-in-Diff: Panel fixed effects regressions of early repeal of abortion on in utero cohort log of 15–19 year-old gonorrhea incidence rates by race/gender, 25–29 comparison, state and age linear trends, 1985–2000, state clustering")
+
+#, coef_omit = c(-68:-75, -106:-120)
+```
+
+
+Table 3 reports the estimated coefficients for the Triple-difference (DDD) analysis, comparing gonorrhea incidence among 15-19-year-olds and 25-29-year-olds by race and gender. For Black females, the DDD coefficients are negative, statistically significant through the mid-treatment period, and consistent with the earlier difference-in-differences (DD) findings which support the abortion legalization hypothesis. Early abortion repeal is estimated to have reduced gonorrhea incidence by 32-38% from 1986 to 1989. For Black males, similar results are found, with estimated reductions of 24-27% through 1988. The results for Whites are less robust, but for White females, the coefficients are negative and statistically significant through 1988, indicating treatment effects of 14-34%. The findings suggest that early abortion legalization had a significant impact on reducing gonorrhea incidence for Black adolescents, with insignificant evidence for Whites.
+
+# Conclusion
+
+The paper by Cunningham and Cornwell (2013) does a great job in explaining the effects of abortion legalization on sexually transmitted infections (STIs), specifically focusing on gonorrhea among 15–19-year-olds. Building on the work of Donohue and Levitt (2001), which linked abortion to crime reduction, this study explores whether similar effects can be seen for other risky behaviors, such as STI incidence. By utilizing a quasi-experimental design with early repeal states that legalized abortion prior to Roe v. Wade, the study finds evidence of reduced gonorrhea rates among Black teenagers, with a pronounced u-shaped treatment effect. The effect was most significant for Black females, with reductions in gonorrhea incidence reaching 43% in 1989. Although weaker for Whites, the overall pattern supports the hypothesis that abortion legalization led to a decrease in risky behaviors. The robustness check including an unaffected older cohort (25–29-year-olds) corroborates these findings, further validating the observed u-shaped treatment effects. This paper contributes significantly to the literature by expanding the scope of the abortion-legalization hypothesis beyond non-fertility outcomes and crime to encompass STI outcomes, providing robust evidence of its positive public health impact, especially among marginalized black communities. 
+
