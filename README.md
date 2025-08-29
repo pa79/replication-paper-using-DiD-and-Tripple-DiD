@@ -55,7 +55,7 @@ Results show that gonorrhea incidence fell among Black adolescents in early-repe
 
 
 ### Figure 2. Gonorrhea incidence among 15–19-year-old Blacks in Roe and early-repeal states by gender, 1985–2000
-![Figure 2](Figure 1.png)  
+![Figure 2](replication-paper-using-DiD-and-Tripple-DiD/Figure 1.png)  
 The shaded region marks 1986–1992 when the in-utero treatment group enters. Incidence falls in early-repeal states relative to Roe states, with peak differences mid-period.
 
 ### Figure 3. Gonorrhea incidence among 15–19-year-old Whites in Roe and early-repeal states by gender, 1985–2000
