@@ -56,19 +56,19 @@ Results show that gonorrhea incidence fell among Black adolescents in early-repe
 > Replace `path/to/figureX.ext` with the actual file paths in your repo. If you keep figures in `output/figures/`, use that path.
 
 ### Figure 2. Gonorrhea incidence among 15–19-year-old Blacks in Roe and early-repeal states by gender, 1985–2000
-![Figure 2](path/to/figure2.ext)  
+![Figure 2](Figure 1.png)  
 The shaded region marks 1986–1992 when the in-utero treatment group enters. Incidence falls in early-repeal states relative to Roe states, with peak differences mid-period.
 
 ### Figure 3. Gonorrhea incidence among 15–19-year-old Whites in Roe and early-repeal states by gender, 1985–2000
-![Figure 3](path/to/figure3.ext)  
+![Figure 3](Figure 2.png)  
 Patterns are similar for White males and females but magnitudes are much lower than for Blacks. Divergence is smaller and less sustained.
 
 ### Figure 4. Gonorrhea incidence among 15–19 and 25–29-year-old Blacks in Roe and early-repeal states by gender, 1985–2000
-![Figure 4](path/to/figure4.ext)  
+![Figure 4](Figure 3.png)  
 Adding the older cohort enables DDD. The younger cohort shows stronger repeal–Roe divergence, consistent with in-utero exposure effects.
 
 ### Figure 5. Gonorrhea incidence among 15–19 and 25–29-year-old Whites in Roe and early-repeal states by gender, 1985–2000
-![Figure 5](path/to/figure5.ext)  
+![Figure 5](Figure 4.png)  
 Trends for Whites are more consistent across age groups, with weaker repeal–Roe differences.
 
 ---
