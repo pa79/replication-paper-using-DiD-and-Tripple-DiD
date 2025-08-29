@@ -59,15 +59,15 @@ Results show that gonorrhea incidence fell among Black adolescents in early-repe
 The shaded region marks 1986–1992 when the in-utero treatment group enters. Incidence falls in early-repeal states relative to Roe states, with peak differences mid-period.
 
 ### Figure 3. Gonorrhea incidence among 15–19-year-old Whites in Roe and early-repeal states by gender, 1985–2000
-![Figure 3](Figure 2.png)  
+![Figure 3](Figure_2.png)  
 Patterns are similar for White males and females but magnitudes are much lower than for Blacks. Divergence is smaller and less sustained.
 
 ### Figure 4. Gonorrhea incidence among 15–19 and 25–29-year-old Blacks in Roe and early-repeal states by gender, 1985–2000
-![Figure 4](Figure 3.png)  
+![Figure 4](Figure_3.png)  
 Adding the older cohort enables DDD. The younger cohort shows stronger repeal–Roe divergence, consistent with in-utero exposure effects.
 
 ### Figure 5. Gonorrhea incidence among 15–19 and 25–29-year-old Whites in Roe and early-repeal states by gender, 1985–2000
-![Figure 5](Figure 4.png)  
+![Figure 5](Figure_4.png)  
 Trends for Whites are more consistent across age groups, with weaker repeal–Roe differences.
 
 ---
@@ -76,16 +76,9 @@ Trends for Whites are more consistent across age groups, with weaker repeal–Ro
 
 **Specification**
 
-\[
-\ln GON_{st} = \beta_1 \text{Repeal}_s + \beta_2 D_t + \beta_{3t}(\text{Repeal}_s \times D_t) + X_{st}\gamma + \delta_s + \theta_1 t + \theta_2 (\delta_s \times t) + \varepsilon_{st}
-\]
 
-- \(GON_{st}\): new gonorrhea cases per 100,000 in state \(s\), year \(t\), ages 15–19  
-- \(\text{Repeal}_s\): 1 if a state legalized abortion before *Roe*, 0 otherwise  
-- \(D_t\): year indicators  
-- \(X_{st}\): AIDS mortality, incarceration, parental involvement laws, alcohol, crack index, poverty, income, unemployment  
-- \(\delta_s\): state fixed effects; \(\theta\): time trends  
-- Main parameters: \(\beta_{3t}\) for 1986–1992
+ln GON_{st} = β1 Repeal_s + β2 D_t + β3t(Repeal_s × D_t) + X_{st}γ + δ_s + θ1 t + θ2(δ_s × t) + ε_{st}
+
 
 **Interpretation**  
 Negative and significant \(\beta_{3t}\) for 1986–1992 match the hypothesis. Magnitudes peak mid-period and then decline.
@@ -121,20 +114,10 @@ Black females: negative and significant 1986–1992, with peak magnitude around 
 
 **Specification**
 
-\[
-\begin{aligned}
-\ln GON_{ast} &= \beta_1 \text{Repeal}_s + \beta_2 D_t + \beta_{3t}(\text{Repeal}_s \times D_t)
-+ \lambda_1 D_A + \lambda_2 (\text{Repeal}_s \times D_A) \\
-&\quad + \lambda_{3t}(D_A \times D_t) + \lambda_{4t}(\text{Repeal}_s \times D_A \times D_t)
-+ X_{st}\gamma + \delta_s + \delta_s D_A \\
-&\quad + \theta_1 t + \theta_{2s} (\delta_s \times t) + \theta_3 (D_A \times t)
-+ \theta_{4s} (\delta_s \times D_A \times t) + \varepsilon_{ast}
-\end{aligned}
-\]
+**Specification**
 
-- \(a\): age cohort (15–19 vs 25–29)  
-- \(D_A\): cohort indicator (1 for 15–19, 0 for 25–29)  
-- Main parameters: \(\lambda_{4t}\)
+![equation](https://latex.codecogs.com/png.latex?\ln%20GON_{ast}=\beta_1%20Repeal_s+\beta_2%20D_t+\beta_{3t}(Repeal_s%20\times%20D_t)%20+%20\lambda_1%20D_A%20+%20\lambda_2(Repeal_s%20\times%20D_A)%20+%20\lambda_{3t}(D_A%20\times%20D_t)%20+%20\lambda_{4t}(Repeal_s%20\times%20D_A%20\times%20D_t)%20+%20X_{st}\gamma%20+%20\delta_s%20+%20\delta_s%20D_A%20+%20\theta_1%20t%20+%20\theta_{2s}(\delta_s%20\times%20t)%20+%20\theta_3(D_A%20\times%20t)%20+%20\theta_{4s}(\delta_s%20\times%20D_A%20\times%20t)%20+%20\varepsilon_{ast})
+
 
 ### Table 3. DDD (panel FE; state and age trends; state-clustered SEs)
 ### Table 3. Diff-in-Diff-in-Diff: Panel Fixed Effects Regressions of Early Repeal of Abortion on In Utero Cohort Log of 15–19-Year-Old Gonorrhea Incidence Rates by Race/Gender, 25–29 Comparison, 1985–2000
